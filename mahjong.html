@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>麻雀麻雀　同点条件</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a2e; color: #e0e0e0;
+    font-family: 'Hiragino Kaku Gothic Pro', 'Yu Gothic', sans-serif;
+    min-height: 100vh; display: flex; justify-content: center;
+    padding: 12px 8px;
+  }
+  .app { width: 100%; max-width: 420px; }
+  h1 {
+    text-align: center; font-size: 14px; color: #a0c4ff;
+    letter-spacing: 4px; margin-bottom: 12px;
+    padding-bottom: 8px; border-bottom: 1px solid #2a2a4e;
+  }
+  .player-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+  .btn-oya {
+    width: 48px; height: 48px; border: 1px solid #555;
+    background: #2a2a3e; color: #888; font-size: 22px;
+    border-radius: 6px; cursor: pointer; flex-shrink: 0;
+  }
+  .btn-oya.is-oya { background: #c0392b; border-color: #e74c3c; color: #fff; font-weight: bold; }
+  .btn-oya.is-ko  { background: #1a5276; border-color: #2980b9; color: #adf; }
+  .btn-player {
+    flex: 1; height: 48px; border: 1px solid #555;
+    background: #2a2a3e; color: #e0e0e0; font-size: 15px; font-weight: bold;
+    border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-user-select: none; user-select: none;
+    overflow: hidden; white-space: nowrap;
+  }
+  .btn-player.shi-active { background: #16a085; border-color: #1abc9c; color: #fff; }
+  .btn-player.input-active { background: #16a085; border-color: #1abc9c; color: #fff; }
+  .btn-minus {
+    width: 24px; height: 48px; border: 1px solid #555;
+    background: #2a2a3e; color: #f39c12; font-size: 22px; font-weight: bold;
+    border-radius: 6px; cursor: pointer; flex-shrink: 0;
+  }
+  .btn-minus.active { background: #7d4e00; border-color: #f39c12; color: #ffe; }
+  .score-display {
+    width: 90px; flex-shrink: 0; height: 48px; background: #0d0d1a;
+    border: 1px solid #333; border-radius: 6px;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 8px; font-size: 20px; font-weight: bold;
+    color: #7fdbff; letter-spacing: 1px; min-width: 0;
+  }
+  .score-display.me { border-color: #16a085; color: #1abc9c; }
+  .btn-ac {
+    width: 87px; height: 48px; border: 1px solid #7d1a1a;
+    background: #3a1a1a; color: #e74c3c; font-size: 24px; font-weight: bold;
+    border-radius: 6px; cursor: pointer; flex-shrink: 0;
+  }
+  .diff-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 0; width: 87px; }
+  .diff-wrap-label { font-size: 11px; color: #888; width: 12px; text-align: center; flex-shrink: 0; }
+  .diff-box {
+    flex: 1; height: 48px; background: #0d0d1a;
+    border: 1px solid #333; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: bold; color: #aaa;
+  }
+  .kyoku-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+  .kyoku-spacer { width: 52px; flex-shrink: 0; }
+  .btn-kyoku {
+    width: 54px; height: 36px; border: 1px solid #555;
+    background: #2a2a3e; color: #e0e0e0; font-size: 20px; font-weight: bold;
+    border-radius: 6px; cursor: pointer; flex-shrink: 0;
+  }
+  .btn-kyoku.selected { background: #8e44ad; border-color: #9b59b6; color: #fff; }
+  .kyoku-display {
+    width: 44px; height: 36px; background: #0d0d1a;
+    border: 1px solid #333; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: bold; color: #f39c12; flex-shrink: 0;
+  }
+  .sum-label { font-size: 11px; color: #888; flex-shrink: 0; }
+  .kyoku-sum {
+    flex: 1; height: 36px; background: #0d0d1a;
+    border: 1px solid #444; border-radius: 6px;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 8px; font-size: 15px; font-weight: bold; color: #f39c12;
+  }
+  .kyoku-sum.error { color: #e74c3c; border-color: #e74c3c; }
+  .numpad { display: grid; grid-template-columns: repeat(5,1fr); gap: 5px; margin: 10px 0; }
+  .btn-num {
+    aspect-ratio: 1; border: 1px solid #444; background: #252540;
+    color: #e0e0e0; font-size: 26px; font-weight: bold;
+    border-radius: 8px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-num:active { background: #16a085; }
+  .divider { border: none; border-top: 1px solid #2a2a4e; margin: 10px 0; }
+  .result-row { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+  .result-label { font-size: 13px; color: #aaa; width: 28px; text-align: center; flex-shrink: 0; }
+  .result-box {
+    height: 36px; background: #0d0d1a; border: 1px solid #2a3a2a;
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: bold; color: #2ecc71;
+    min-width: 65px; flex: 1;
+  }
+  .result-diff-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .result-diff-label { font-size: 11px; color: #888; width: 12px; text-align: center; }
+  .result-box.rdiff { width: 72px; min-width: 72px; flex: 0 0 72px; color: #e74c3c; }
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #1e1e3a; border: 1px solid #444;
+    border-radius: 12px; padding: 24px 20px;
+    text-align: center; width: 260px;
+  }
+  .modal p { font-size: 15px; margin-bottom: 20px; color: #e0e0e0; }
+  .modal-btns { display: flex; gap: 12px; justify-content: center; }
+  .modal-btns button {
+    flex: 1; height: 40px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: bold; border: none;
+  }
+  .btn-yes { background: #c0392b; color: #fff; }
+  .btn-no  { background: #2a2a4e; color: #aaa; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>麻雀　同点条件</h1>
+  <div class="player-row">
+    <button class="btn-oya is-oya" id="oya-A" onclick="selectOya('A')">親</button>
+    <button class="btn-player shi-active input-active" id="btn-A" onclick="selectShi('A')" onmousedown="startLongPress('A')" onmouseup="cancelLongPress()" onmouseleave="cancelLongPress()" ontouchstart="startLongPress('A')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()">A</button>
+    <button class="btn-minus" id="minus-A" onclick="toggleMinus('A')">－</button>
+    <div class="score-display me" id="disp-A">＿＿＿</div>
+    <div class="diff-wrap" id="diffwrap-A" style="display:none"><span class="diff-wrap-label">差</span><div class="diff-box" id="diffbox-A">—</div></div>
+    <button class="btn-ac" id="btn-ac" onclick="confirmAC()">AC</button>
+  </div>
+  <div class="player-row">
+    <button class="btn-oya is-ko" id="oya-B" onclick="selectOya('B')">子</button>
+    <button class="btn-player" id="btn-B" onclick="selectShi('B')" onmousedown="startLongPress('B')" onmouseup="cancelLongPress()" onmouseleave="cancelLongPress()" ontouchstart="startLongPress('B')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()">B</button>
+    <button class="btn-minus" id="minus-B" onclick="toggleMinus('B')">－</button>
+    <div class="score-display" id="disp-B">＿＿＿</div>
+    <div class="diff-wrap"><span class="diff-wrap-label">差</span><div class="diff-box" id="diffbox-B">—</div></div>
+  </div>
+  <div class="player-row">
+    <button class="btn-oya is-ko" id="oya-C" onclick="selectOya('C')">子</button>
+    <button class="btn-player" id="btn-C" onclick="selectShi('C')" onmousedown="startLongPress('C')" onmouseup="cancelLongPress()" onmouseleave="cancelLongPress()" ontouchstart="startLongPress('C')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()">C</button>
+    <button class="btn-minus" id="minus-C" onclick="toggleMinus('C')">－</button>
+    <div class="score-display" id="disp-C">＿＿＿</div>
+    <div class="diff-wrap"><span class="diff-wrap-label">差</span><div class="diff-box" id="diffbox-C">—</div></div>
+  </div>
+  <div class="player-row">
+    <button class="btn-oya is-ko" id="oya-D" onclick="selectOya('D')">子</button>
+    <button class="btn-player" id="btn-D" onclick="selectShi('D')" onmousedown="startLongPress('D')" onmouseup="cancelLongPress()" onmouseleave="cancelLongPress()" ontouchstart="startLongPress('D')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()">D</button>
+    <button class="btn-minus" id="minus-D" onclick="toggleMinus('D')">－</button>
+    <div class="score-display" id="disp-D">＿＿＿</div>
+    <div class="diff-wrap"><span class="diff-wrap-label">差</span><div class="diff-box" id="diffbox-D">—</div></div>
+  </div>
+  <div class="kyoku-row">
+    <div class="kyoku-spacer"></div>
+    <button class="btn-kyoku" id="btn-kyoku" onclick="selectInput('kyoku')">供</button>
+    <div class="kyoku-display" id="disp-kyoku">＿</div>
+    <span class="sum-label">差異</span>
+    <div class="kyoku-sum" id="disp-diff">—</div>
+  </div>
+  <div class="kyoku-row">
+    <div class="kyoku-spacer"></div>
+    <button class="btn-kyoku" id="btn-zumi" onclick="selectInput('zumi')">積</button>
+    <div class="kyoku-display" id="disp-zumi">＿</div>
+    <span class="sum-label">合計</span>
+    <div class="kyoku-sum" id="disp-sum">—</div>
+  </div>
+  <div class="numpad">
+    <button class="btn-num" onclick="inputNum(1)">1</button>
+    <button class="btn-num" onclick="inputNum(2)">2</button>
+    <button class="btn-num" onclick="inputNum(3)">3</button>
+    <button class="btn-num" onclick="inputNum(4)">4</button>
+    <button class="btn-num" onclick="inputNum(5)">5</button>
+    <button class="btn-num" onclick="inputNum(6)">6</button>
+    <button class="btn-num" onclick="inputNum(7)">7</button>
+    <button class="btn-num" onclick="inputNum(8)">8</button>
+    <button class="btn-num" onclick="inputNum(9)">9</button>
+    <button class="btn-num" onclick="inputNum(0)">0</button>
+  </div>
+  <hr class="divider">
+  <div class="result-row">
+    <span class="result-label">ツモ</span>
+    <div class="result-box" id="res-tsumo1">—</div>
+    <div class="result-box" id="res-tsumo2">—</div>
+    <div class="result-diff-wrap"><span class="result-diff-label">余</span><div class="result-box rdiff" id="res-tsumo-diff">—</div></div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">ロン</span>
+    <div class="result-box" id="res-ron">—</div>
+    <div style="flex:1"></div>
+    <div class="result-diff-wrap" style="visibility:hidden"><span class="result-diff-label">差</span><div class="result-box rdiff">—</div></div>
+  </div>
+  <div class="result-row">
+    <span class="result-label">直</span>
+    <div class="result-box" id="res-choku">—</div>
+    <div style="flex:1"></div>
+    <div class="result-diff-wrap"><span class="result-diff-label">余</span><div class="result-box rdiff" id="res-choku-diff">—</div></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <p>データを消去しますか？</p>
+    <div class="modal-btns">
+      <button class="btn-yes" onclick="doAC()">はい</button>
+      <button class="btn-no" onclick="closeModal()">いいえ</button>
+    </div>
+  </div>
+</div>
+<script>
+const scores={A:'',B:'',C:'',D:''};
+const minusFlag={A:false,B:false,C:false,D:false};
+let kyoku='',zumi='';
+let oyaPlayer='A',selectedInput='A',shiPlayer='A';
+function selectShi(p){
+  shiPlayer=p;
+  ['A','B','C','D'].forEach(x=>{
+    const btn=document.getElementById('btn-'+x);
+    btn.classList.toggle('shi-active',x===p);
+    btn.classList.toggle('input-active',x===p);
+    document.getElementById('disp-'+x).classList.toggle('me',x===p);
+  });
+  const acBtn=document.getElementById('btn-ac');
+  const diffWrapA=document.getElementById('diffwrap-A');
+  if(p==='A'){acBtn.style.display='';diffWrapA.style.display='none';}
+  else{acBtn.style.display='none';diffWrapA.style.display='flex';}
+  selectedInput=p;
+  document.getElementById('btn-kyoku').classList.remove('selected');
+  document.getElementById('btn-zumi').classList.remove('selected');
+  calcDiffs();calc();
+}
+let longPressTimer=null;
+function startLongPress(p){
+  longPressTimer=setTimeout(()=>{
+    const current=document.getElementById('btn-'+p).textContent.trim();
+    const name=prompt('名前を入力（'+p+'）:',current===p?'':current);
+    if(name!==null){
+      const label=name.trim()===''?p:name.trim().slice(0,5);
+      document.getElementById('btn-'+p).textContent=label;
+    }
+  },600);
+}
+function cancelLongPress(){if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}}
+function selectOya(p){
+  oyaPlayer=p;
+  ['A','B','C','D'].forEach(x=>{
+    const btn=document.getElementById('oya-'+x);
+    btn.textContent=x===p?'親':'子';
+    btn.className='btn-oya '+(x===p?'is-oya':'is-ko');
+  });
+  calc();
+}
+function toggleMinus(p){
+  minusFlag[p]=!minusFlag[p];
+  document.getElementById('minus-'+p).classList.toggle('active',minusFlag[p]);
+  updateDisp(p);calcSum();calcDiffs();calc();
+}
+function selectInput(id){
+  selectedInput=id;
+  ['A','B','C','D'].forEach(x=>{
+    document.getElementById('btn-'+x).classList.toggle('input-active',x===id);
+  });
+  if(id==='kyoku'||id==='zumi'){
+    ['A','B','C','D'].forEach(x=>document.getElementById('btn-'+x).classList.remove('input-active'));
+  }
+  document.getElementById('btn-kyoku').classList.toggle('selected',id==='kyoku');
+  document.getElementById('btn-zumi').classList.toggle('selected',id==='zumi');
+}
+function inputNum(n){
+  if(['A','B','C','D'].includes(selectedInput)){
+    if(scores[selectedInput].length>=3)scores[selectedInput]='';
+    scores[selectedInput]+=String(n);
+    updateDisp(selectedInput);
+  }else if(selectedInput==='kyoku'){
+    kyoku=String(n);
+    document.getElementById('disp-kyoku').textContent=kyoku;
+  }else if(selectedInput==='zumi'){
+    zumi=String(n);
+    document.getElementById('disp-zumi').textContent=zumi;
+  }
+  calcSum();calcDiffs();calc();
+}
+function confirmAC(){document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+function doAC(){
+  ['A','B','C','D'].forEach(p=>{
+    scores[p]='';minusFlag[p]=false;
+    document.getElementById('minus-'+p).classList.remove('active');
+    updateDisp(p);
+  });
+  kyoku='';zumi='';
+  document.getElementById('disp-kyoku').textContent='＿';
+  document.getElementById('disp-zumi').textContent='＿';
+  closeModal();
+  calcSum();calcDiffs();calc();
+}
+function getVal(p){
+  if(scores[p]==='')return null;
+  const v=parseInt(scores[p]);
+  return minusFlag[p]?-v:v;
+}
+function updateDisp(p){
+  const el=document.getElementById('disp-'+p);
+  const v=getVal(p);
+  if(v===null){el.innerHTML='＿＿＿';el.style.color='';}
+  else if(v<0){el.innerHTML='<span style="color:#e74c3c">▲'+Math.abs(v)+'</span>';}
+  else{el.innerHTML=String(v);el.style.color='';}
+}
+function fmtDiff(el,d){
+  if(d===null){el.innerHTML='—';return;}
+  if(d<0)el.innerHTML='<span style="color:#e74c3c">▲'+Math.abs(d)+'</span>';
+  else{el.textContent=String(d);el.style.color='#2ecc71';}
+}
+function calcDiffs(){
+  const aVal=getVal(shiPlayer);
+  ['A','B','C','D'].filter(p=>p!==shiPlayer).forEach(p=>{
+    const el=document.getElementById('diffbox-'+p);
+    const pVal=getVal(p);
+    if(aVal===null||pVal===null){el.innerHTML='—';return;}
+    fmtDiff(el,pVal-aVal);
+  });
+  if(document.getElementById('diffbox-'+shiPlayer)){
+    document.getElementById('diffbox-'+shiPlayer).innerHTML='—';
+  }
+}
+function calcSum(){
+  const kyokuVal=kyoku===''?null:parseInt(kyoku);
+  const vals=['A','B','C','D'].map(p=>getVal(p));
+  const sumEl=document.getElementById('disp-sum');
+  const diffEl=document.getElementById('disp-diff');
+  const filledVals=vals.filter(v=>v!==null);
+  const kyokuPart=kyokuVal!==null?kyokuVal*10:0;
+  const anyInput=filledVals.length>0||kyokuVal!==null;
+  if(anyInput){
+    const partial=filledVals.reduce((a,b)=>a+b,0)+kyokuPart;
+    sumEl.textContent=partial<0?'▲'+Math.abs(partial):String(partial);
+    sumEl.className='kyoku-sum'+(partial===1000?'':' error');
+    const d=1000-partial;
+    diffEl.textContent=d<0?'▲'+Math.abs(d):String(d);
+    diffEl.className='kyoku-sum'+(d===0?'':' error');
+  }else{
+    sumEl.textContent='—';sumEl.className='kyoku-sum';
+    diffEl.textContent='—';diffEl.className='kyoku-sum';
+  }
+}
+function ceilDiv(a,b){return Math.ceil(a/b);}
+function setBox(id,v,isDiff){
+  const el=document.getElementById(id);
+  if(v===null){el.textContent='—';el.style.color='';return;}
+  if(v<0){el.textContent='▲'+Math.abs(v);el.style.color='#e74c3c';}
+  else{el.textContent=String(v);el.style.color=isDiff?'#2ecc71':'';}
+}
+function calc(){
+  const vals={};
+  ['A','B','C','D'].forEach(p=>{vals[p]=getVal(p);});
+  const kyokuVal=kyoku===''?0:parseInt(kyoku);
+  const zumiVal=zumi===''?0:parseInt(zumi);
+  const meScore=vals[shiPlayer];
+  const others=['A','B','C','D'].filter(p=>p!==shiPlayer).map(p=>vals[p]).filter(v=>v!==null);
+  const clear=()=>{
+    ['res-tsumo1','res-tsumo2','res-tsumo-diff','res-ron','res-choku','res-choku-diff']
+      .forEach(id=>{document.getElementById(id).textContent='—';document.getElementById(id).style.color='';});
+  };
+  if(meScore===null||others.length===0){clear();return;}
+  const maxOther=Math.max(...others);
+  const base=(maxOther-meScore)-kyokuVal*10;
+  const ron=base-zumiVal*3;
+  const tsumoBase=base-zumiVal*4;
+  let t1,t2,td;
+  if(oyaPlayer===shiPlayer){
+    t1=ceilDiv(tsumoBase,4);t2='ALL';td=Math.abs(t1*4-tsumoBase);
+  }else{
+    const targetPlayer=['A','B','C','D'].filter(p=>p!==shiPlayer)
+      .filter(p=>getVal(p)!==null)
+      .reduce((a,b)=>(getVal(a)>getVal(b)?a:b));
+    const targetIsOya=(oyaPlayer===targetPlayer);
+    if(targetIsOya){
+      t1=ceilDiv(tsumoBase,6);t2=t1*2;td=Math.abs(t1*6-tsumoBase);
+    }else{
+      t1=ceilDiv(tsumoBase,5);t2=t1*2;td=Math.abs(t1*5-tsumoBase);
+    }
+  }
+  const chokuBase=base-zumiVal*6;
+  const choku=ceilDiv(chokuBase,2);
+  const chokuDiff=Math.abs(choku*2-chokuBase);
+  setBox('res-tsumo1',t1);
+  const t2el=document.getElementById('res-tsumo2');
+  if(t2==='ALL'){t2el.textContent='ALL';t2el.style.color='#f39c12';}
+  else if(t2<0){t2el.textContent='▲'+Math.abs(t2);t2el.style.color='#e74c3c';}
+  else{t2el.textContent=String(t2);t2el.style.color='';}
+  setBox('res-tsumo-diff',td,true);
+  setBox('res-ron',ron);
+  setBox('res-choku',choku);
+  setBox('res-choku-diff',chokuDiff,true);
+}
+selectInput('A');
+selectShi('A');
+</script>
+</body>
+</html>
