@@ -206,6 +206,7 @@
 
 <script>
 const scores    = { A:'', B:'', C:'', D:'' };
+let overwriteNext = false; // 次の入力で上書きするフラグ
 const minusFlag = { A:false, B:false, C:false, D:false };
 let kyoku = '', zumi = '';
 let oyaPlayer = 'D', selectedInput = 'A', shiPlayer = 'A';
@@ -214,10 +215,12 @@ const names = { A:'A', B:'B', C:'C', D:'D' };
 // ── 入力選択 ──
 function selectScore(p) {
   selectedInput = p;
+  overwriteNext = scores[p] !== ''; // 入力済みならフラグON
   updateAllSelectionUI();
 }
 function selectKyoku(k) {
   selectedInput = k;
+  overwriteNext = (k === 'kyoku' ? kyoku !== '' : zumi !== '');
   updateAllSelectionUI();
 }
 function updateAllSelectionUI() {
@@ -279,15 +282,16 @@ function cancelLongPress() { if (longPressTimer) { clearTimeout(longPressTimer);
 function inputNum(n) {
   const p = selectedInput;
   if (['A','B','C','D'].includes(p)) {
-    // 入力済みなら上書き（リセットして新規入力）
-    if (scores[p].length >= 3) scores[p] = '';
+    if (overwriteNext || scores[p].length >= 3) { scores[p] = ''; overwriteNext = false; }
     scores[p] += String(n);
     updateDisp(p); calcSum(); calcDiffs(); calc(); saveState();
   } else if (p === 'kyoku') {
+    if (overwriteNext) { kyoku = ''; overwriteNext = false; }
     kyoku = String(n);
     document.getElementById('disp-kyoku').textContent = kyoku;
     calcSum(); calc(); saveState();
   } else if (p === 'zumi') {
+    if (overwriteNext) { zumi = ''; overwriteNext = false; }
     zumi = String(n);
     document.getElementById('disp-zumi').textContent = zumi;
     calc(); saveState();
@@ -440,9 +444,9 @@ function calc() {
 
 // ── localStorage ──
 function saveState() {
-  const nameMap = {};
-  ['A','B','C','D'].forEach(p => { nameMap[p] = document.getElementById('btn-' + p).textContent; });
   try {
+    const nameMap = {};
+    ['A','B','C','D'].forEach(p => { nameMap[p] = document.getElementById('btn-' + p).textContent.trim(); });
     localStorage.setItem('mahjong_state', JSON.stringify({
       scores, minusFlag, kyoku, zumi, oyaPlayer, shiPlayer, names: nameMap
     }));
@@ -464,7 +468,8 @@ function loadState() {
       ['A','B','C','D'].forEach(p => {
         if (s.names[p]) {
           names[p] = s.names[p];
-          document.getElementById('btn-' + p).textContent = s.names[p];
+          const btn = document.getElementById('btn-' + p);
+          if (btn) btn.textContent = s.names[p];
         }
       });
     }
